@@ -70,6 +70,72 @@
           <a href="{{ url_for('users.update',id=user._id) }}" class="btn btn-primary align-self-start mt-auto">
             <i class="bi bi-pencil me-2"></i>Editar
           </a>
+          {% if current_user.rol == "tecnico" %}
+          <div style="width:100%;">
+            <canvas id="audioChart{{ user._id }}"></canvas>
+
+          </div>
+      
+          <script>
+              // Generate random data for 4 weeks
+              var weeks = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+              var audioData = [20,3,11,18];
+      
+              // Create a new Chart
+              var ctx = document.getElementById('audioChart{{ user._id }}').getContext('2d');
+              var audioChart = new Chart(ctx, {
+                  type: 'bar',
+                  data: {
+                      labels: weeks,
+                      datasets: [{
+                          label: 'Audios del usuario en el mes',
+                          data: audioData,
+                          fill: false,
+                          borderColor: 'rgba(54, 162, 235, 1)',
+                          borderWidth: 2,
+                          pointBackgroundColor: 'rgba(54, 162, 235, 1)',
+                          pointRadius: 3,
+                          pointHoverRadius: 7
+                      }]
+                  },
+                  options: {
+          scales: {
+              yAxes: [{
+                  ticks: {
+                      beginAtZero: true,
+                      suggestedMin: 0, // Establecer el mínimo sugerido
+                      suggestedMax: 20, // Establecer el máximo sugerido
+                      stepSize: 1
+                  }
+              }]
+          },
+          transitions: {
+            show: {
+              animations: {
+                x: {
+                  from: 0
+                },
+                y: {
+                  from: 0
+                }
+              }
+            },
+            hide: {
+              animations: {
+                x: {
+                  to: 0
+                },
+                y: {
+                  to: 0
+                }
+              }
+            }
+          }
+      }
+      
+              });
+          </script>
+          {% endif %}
         </section>
       </article>
     {% endfor %}
