@@ -12,6 +12,7 @@ from flask import (
 from flask_login import login_required, current_user
 from pialara.decorators import rol_required
 from pialara.models.Usuario import Usuario
+from pialara.models.Audios import Audios
 from pialara.models.Enfermedades import Enfermedades
 from pialara.models.Disfonias import Disfonias
 from pialara.decorators import rol_required
@@ -23,6 +24,7 @@ bp = Blueprint('users', __name__, url_prefix='/users')
 @rol_required(['admin', 'tecnico', 'cliente'])
 def index():
     u = Usuario()
+    a = Audios()
 
     users = []
     logged_rol = current_user.rol
@@ -32,6 +34,86 @@ def index():
         users = u.find()
     elif logged_rol == "tecnico":
         users = u.find({"rol": {"$eq": 'cliente'}, "parent": {"$eq": current_user.email}})
+                # Aquí puedes ejecutar la consulta de agregación
+        for user in users:
+            user_email = user['mail'] # Asume que el campo de correo electrónico es 'email', ajusta según sea necesario
+            audios_info = a.aggregate([
+                {"$match": {"usuario.mail": user_email}},
+                {
+                    "$group": {
+                        "_id": "$usuario.mail",
+                        "ultimo_audio": {"$max": "$fecha"}
+                    }
+                },
+                {
+                    "$project": {
+                        "_id": 1,
+                        "ultimo_audio": 1,
+                        "fecha_inicio": {"$subtract": ["$ultimo_audio", 700 * 24 * 60 * 60 * 1000]}
+                    }
+                },
+                {
+                    "$lookup": {
+                        "from": "audios",
+                        "let": {"user_mail": "$_id", "start_date": "$fecha_inicio", "end_date": "$ultimo_audio"},
+                        "pipeline": [
+                            {
+                                "$match": {
+                                    "$expr": {
+                                        "$and": [
+                                            {"$eq": ["$usuario.mail", "$$user_mail"]},
+                                            {"$gte": ["$fecha", "$$start_date"]},
+                                            {"$lt": ["$fecha", "$$end_date"]}
+                                        ]
+                                    }
+                                }
+                            },
+                            {
+                                "$addFields": {
+                                    "week": {
+                                        "$subtract": [
+                                            {"$week": "$fecha"},
+                                            {"$week": "$$start_date"}
+                                        ]
+                                    }
+                                }
+                            },
+                            {
+                                "$group": {
+                                    "_id": "$week",
+                                    "total_audios_semana": {"$sum": 1}
+                                }
+                            },
+                            {
+                                "$sort": {"_id": 1}
+                            }
+                        ],
+                        "as": "audios_semana"
+                    }
+                },
+                {
+                    "$project": {
+                        "_id": 1,
+                        "audios_semana": {
+                            "$map": {
+                                "input": {"$range": [0, 3]},  # 4 semanas
+                                "as": "weekIndex",
+                                "in": {
+                                    "$cond": [
+                                        {"$eq": [{"$indexOfArray": ["$audios_semana._id", "$$weekIndex"]}, -1]},
+                                        0,  # Si la semana no está presente, asigna 0
+                                        {"$arrayElemAt": ["$audios_semana.total_audios_semana", {"$indexOfArray": ["$audios_semana._id", "$$weekIndex"]}]}
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            ])
+            user['audios_info'] = list(audios_info)
+            print(user['audios_info'])
+            print(user['mail'])
+            print(user['audios_info'])
     else:
         return redirect(url_for('audios.client_tag'))
 
