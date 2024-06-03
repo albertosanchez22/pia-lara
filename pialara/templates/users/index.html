@@ -2,16 +2,6 @@
 
 {% block content %}
 
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    {% for category, message in messages %}
-      <div class="alert alert-{{ category }}">
-        {{ message }}
-        </div>
-    {% endfor %}
-  {% endif %}
-{% endwith %}
-
 <h1 class="m-2 text-center">Lista de usuarios</h1>
 
 <a href="/users/create" class="btn btn-success m-2">
@@ -24,6 +14,16 @@
       <button class="btn btn-primary" type="submit" id="button-search"><i class="bi bi-search me-2"></i>Buscar</button>
     </div>
   </form>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }}">
+          {{ message }}
+          </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
 
   <section class="container d-flex flex-wrap justify-content-center gap-3">
     {% for user in users %}
@@ -61,12 +61,17 @@
               <i class="bi bi-music-note me-2"></i>{{ user.cant_audios }}
             </p>
           {% endif %}
+          {% if user.entidad %}
+          <p class="card-text mb-1">
+            <i class="bi bi-shop me-2"></i>{{ user.entidad }}
+          </p>
+          {% endif %}
           <p class="card-text mb-1">
             <i class="bi bi-clock me-2"></i>{{ user.ultima_conexion.strftime('%d/%m/%Y - %H:%M') }}
           </p>
-            <p class = "card-text mb-3 tipo_{{ user.rol }}" >
-                <i class="bi bi-person"></i>  {{ user.rol }}
-            </p>
+          <p class = "card-text mb-3 tipo_{{ user.rol }}" >
+              <i class="bi bi-person"></i>  {{ user.rol }}
+          </p>
           <a href="{{ url_for('users.update',id=user._id) }}" class="btn btn-primary align-self-start mt-auto">
             <i class="bi bi-pencil me-2"></i>Editar
           </a>

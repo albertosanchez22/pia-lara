@@ -2,6 +2,7 @@ from werkzeug.security import generate_password_hash
 
 from datetime import datetime
 from bson.objectid import ObjectId
+import pymongo
 from flask import Blueprint, render_template, request
 from urllib import request
 
@@ -29,7 +30,7 @@ def index():
     url = 'users/index.html'
 
     if logged_rol == "admin":
-        users = u.find()
+        users = u.find().sort([("rol", pymongo.ASCENDING),("nombre", pymongo.ASCENDING)])
     elif logged_rol == "tecnico":
         users = u.find({"rol": {"$eq": 'cliente'}, "parent": {"$eq": current_user.email}})
     else:
@@ -88,6 +89,8 @@ def create_post():
     fNacCliente = request.form.get('fnac_cliente')
     sexoCliente = request.form.get('sexo_cliente')
     provinciaCliente = request.form.get('provincia_cliente')
+    entidadCliente = request.form.get('entidad_cliente')
+    observacionesCliente = request.form.get('observaciones_cliente')
     enfermedadesCliente = request.form.getlist('enfermedades')
     disCliente = request.form.getlist('dis')
 
@@ -96,7 +99,6 @@ def create_post():
     if pass1 != pass2:
         flash("Las contraseñas no son iguales", 'danger')
         return render_template('users/create.html')
-
 
     result = None
 
@@ -118,11 +120,11 @@ def create_post():
         newUser = {"nombre": nombreCliente, "mail": emailCliente, "rol": "cliente",
                    "password": generate_password_hash(pass1, method='sha256'),
                    "fecha_nacimiento": fecha, "ultima_conexion": datetime.now(),
-                   "sexo": sexoCliente, "provincia": provinciaCliente,
+                   "sexo": sexoCliente, "provincia": provinciaCliente, "entidad": entidadCliente,
+                   "observaciones": observacionesCliente,
                    "enfermedades": enfermedadesCliente, "dis": disCliente,
                    "parent": current_user.email, "cant_audios":0}
         result = user.insert_one(newUser)
-
 
     # Comprobar el resultado y mostrar mensaje
     if not result == None and result.acknowledged:
@@ -156,13 +158,25 @@ def update_post(id):
     usu = Usuario()
     nombre = request.form.get('nombre')
     email = request.form.get('email')
-    font_size = request.form.get('font_size')
+    sexo = request.form.get('sexo')
+    entidad = request.form.get('entidad')
+    fnac = request.form.get('fnac')
+    observaciones = request.form.get('observaciones')
+    font_size = request.form.get('font_size',1)
+
+    fecha = datetime.strptime(fnac, '%Y-%m-%d')
+
+    mongo_set = {"$set": {'nombre': nombre, 'mail': email, 'sexo': sexo, 'entidad': entidad, 'observaciones': observaciones, 'fecha_nacimiento': fecha}}
+
+    if font_size == "":
+        font_size = 1
     font_size_flota = float(font_size)
 
-    if font_size_flota == session['font_size']:
-        resultado = usu.update_one({'_id': ObjectId(id)}, {"$set": {'nombre': nombre, 'mail': email}})
-    else:
-        resultado = usu.update_one({'_id': ObjectId(id)}, {"$set": {'nombre': nombre, 'mail': email, 'font_size': font_size_flota}})
+    if font_size_flota != session['font_size']:
+        mongo_set = {"$set": {'nombre': nombre, 'mail': email, 'sexo': sexo, 'entidad': entidad, 'observaciones': observaciones, 'fecha_nacimiento': fecha, 'font_size': font_size_flota}}
+
+    print("MONGO_SET", mongo_set)
+    resultado = usu.update_one({'_id': ObjectId(id)}, mongo_set)
 
     if resultado.acknowledged & resultado.modified_count == 1:
         session['font_size'] = font_size_flota

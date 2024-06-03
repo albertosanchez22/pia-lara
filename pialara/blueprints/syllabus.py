@@ -3,14 +3,12 @@ import math
 from bson.objectid import ObjectId
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
-import json
 
 from pialara.models.Syllabus import Syllabus
 from pialara.models.Usuario import Usuario
 from pialara.models.Clicks import Clicks
 
 bp = Blueprint("syllabus", __name__, url_prefix="/syllabus")
-
 
 @bp.route("/", methods=["GET"])
 @login_required
@@ -27,7 +25,7 @@ def index():
         match_filter.update(
             {
                 "$or": [
-                    {"tags": {"$regex": tag_name, "$options": "i"}},
+                    {"tags": tag_name},
                     {"texto": {"$regex": tag_name, "$options": "i"}},
                 ]
             }
@@ -66,7 +64,7 @@ def index():
             }
         )
 
-    pipeline = [{"$unwind": {"path": "$tags"}}, {"$match": match_filter}]
+    pipeline = [{"$match": match_filter}]
 
     # Empieza modificacion
     PER_PAGE = 9
@@ -81,6 +79,7 @@ def index():
     skip = (current_page - 1) * PER_PAGE
 
     pipeline += [{"$skip": skip}, {"$limit": PER_PAGE}]
+    print(pipeline)
     documentos = syllabus.aggregate(pipeline)
 
     pages_min = max([1, current_page - 3])
@@ -149,7 +148,7 @@ def create_post():
             "rol": user.get("rol"),
         },
         "tags": tagsArray,
-        "fecha_creacion": datetime.datetime.now(),
+        "fecha_creacion": datetime.now(),
     }
     result = texto.insert_one(aux)
 

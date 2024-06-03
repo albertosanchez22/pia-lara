@@ -48,11 +48,12 @@ def client_tag():
     ]
     tags_suerte = syllabus.aggregate(pipeline)
 
-    # Es una chapuza ... rehacer en un futuro con una única consulta a MongoDB
+    # TODO - Es una chapuza ... rehacer en un futuro con una única consulta a MongoDB
     todos_tags = syllabus.distinct("tags",{})
     tags_audios_menos_grabadas = audio.distinct("texto.tag", {"texto.tipo": "syllabus"})
     tags_menos_grabadas = list(set(todos_tags) - set(tags_audios_menos_grabadas))
-    if tags_menos_grabadas:
+
+    if tags_menos_grabadas and len(tags_menos_grabadas) >= 5:
         tags_menos_grabadas = sample(tags_menos_grabadas, 5)
     else:
         tags_menos_grabadas = sample(tags_audios_menos_grabadas, 5)
@@ -118,7 +119,7 @@ def save_record():
     filename = str(current_user.id) + '_' + str(timestamp) + '.wav'
 
     # # Guardado en S3
-    """s3c = boto3.client(
+    s3c = boto3.client(
         's3',
         region_name='eu-south-2',
         aws_access_key_id=current_app.config["AWS_ACCESS_KEY_ID"],
@@ -126,7 +127,7 @@ def save_record():
         # aws_session_token=current_app.config["AWS_SESSION_TOKEN"]
     )
 
-    s3c.upload_fileobj(file, current_app.config["BUCKET_NAME"], filename)"""
+    s3c.upload_fileobj(file, current_app.config["BUCKET_NAME"], filename)
 
     text_id = request.form.get('text_id')
     text_text = request.form.get('text_text')
